@@ -42,7 +42,7 @@ elif [ $MODEL == "xlm-roberta-large" ] || [ $MODEL == "xlm-roberta-base" ]; then
 fi
 
 # Add fine-tuned model path here
-MODEL=/mnt/disk-1/models/squad/xlm-roberta-large_LR3e-5_EPOCH2.0_maxlen384_batchsize2_gradacc16
+MODEL=/mnt/disk-1/models/squad/bert-base-multilingual-cased
 
 OUT=$OUT_DIR/$TASK/${MODEL}_${MAXL}/
 mkdir -p $OUT
