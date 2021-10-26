@@ -19,7 +19,7 @@ REPO=$PWD
 LIB=$REPO/third_party
 mkdir -p $LIB
 
-# install conda env
+# install env
 python3 -m venv xtreme
 source xtreme/bin/activate
 
