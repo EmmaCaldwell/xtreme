@@ -20,15 +20,17 @@ LIB=$REPO/third_party
 mkdir -p $LIB
 
 # install conda env
-conda create --name xtreme --file conda-env.txt
-conda init bash
-conda activate xtreme
+python3 -m venv xtreme
+source xtreme/bin/activate
 
 # install latest transformer
+pip install tensorflow==2.2.0
 cd $LIB
+pip install transformers
 git clone https://github.com/huggingface/transformers
 cd transformers
-git checkout cefd51c50cc08be8146c1151544495968ce8f2ad
+git branch mybranch
+git checkout mybranch
 pip install .
 cd $LIB
 
@@ -40,8 +42,9 @@ pip install sacremoses
 pip install pythainlp
 pip install jieba
 
-git clone https://github.com/neubig/kytea.git && cd kytea
-autoreconf -i
-./configure --prefix=${CONDA_PREFIX}
-make && make install
-pip install kytea
+#git clone https://github.com/neubig/kytea.git && cd kytea
+#autoreconf -i
+#./configure --prefix=${CONDA_PREFIX}
+#make && make install
+#pip install kytea
+
