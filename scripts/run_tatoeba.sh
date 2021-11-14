@@ -47,7 +47,7 @@ fi
 OUT=$OUT_DIR/$TASK/${MODEL}_${MAXL}/
 mkdir -p $OUT
 for SL in ar he vi id jv tl eu ml ta te af nl en de el bn hi mr ur fa fr it pt es bg ru ja ka ko th sw zh kk tr et fi hu az lt pl uk ro; do
-  python $REPO/third_party/evaluate_retrieval.py \
+  python $REPO/third_party/evaluate_retrieval_mT5.py \
     --model_type $MODEL_TYPE \
     --model_name_or_path $MODEL \
     --embed_size $DIM \
