@@ -19,6 +19,7 @@ GPU=${2:-0}
 DATA_DIR=${3:-"$REPO/download/"}
 OUT_DIR=${4:-"$REPO/outputs/"}
 
+set -ex
 export CUDA_VISIBLE_DEVICES=$GPU
 
 TASK='tatoeba'
@@ -54,7 +55,8 @@ elif [ $MODEL == "google/mt5-small" ] || [ $MODEL == "google/mt5-xxl" ]; then
   LAYER=13
 elif [ $MODEL == "rembert" ]; then
   MODEL_TYPE="rembert"
-  DIM=256
+  MODEL="google/rembert"
+  DIM=1152
   NLAYER=24
   LAYER=13
 fi
@@ -65,7 +67,7 @@ fi
 OUT=$OUT_DIR/$TASK/${MODEL}_${MAXL}/
 #OUT=/content/gdrive/MyDrive/xtreme-master
 mkdir -p $OUT
-if [ $MODEL=="bert-base-multilingual-cased" ] || [ $MODEL=="xlm-mlm-100-1280" ] || [ $MODEL=="xlm-mlm-tlm-xnli15-1024" ] || [ $MODEL=="xlm-roberta-large" ] || [ $MODEL=="xlm-roberta-base" ]; then
+if [ $MODEL == "bert-base-multilingual-cased" ] || [ $MODEL == "xlm-mlm-100-1280" ] || [ $MODEL == "xlm-mlm-tlm-xnli15-1024" ] || [ $MODEL == "xlm-roberta-large" ] || [ $MODEL == "xlm-roberta-base" ]; then
   for SL in ar he vi id jv tl eu ml ta te af nl en de el bn hi mr ur fa fr it pt es bg ru ka ko th sw zh kk tr et fi hu az lt pl uk ro; do
     python $REPO/third_party/evaluate_retrieval.py \
       --model_type $MODEL_TYPE \
@@ -83,7 +85,6 @@ if [ $MODEL=="bert-base-multilingual-cased" ] || [ $MODEL=="xlm-mlm-100-1280" ] 
       --dist cosine $LC \
       --specific_layer $LAYER
   done
-    
 elif [ $MODEL == "google/mt5-small" ] || [ $MODEL == "google/mt5-xxl" ]; then
   for SL in ar he vi id jv tl eu ml ta te af nl en de el bn hi mr ur fa fr it pt es bg ru ka ko th sw zh kk tr et fi hu az lt pl uk ro; do
     python $REPO/third_party/evaluate_retrieval_mT5.py \
@@ -102,8 +103,7 @@ elif [ $MODEL == "google/mt5-small" ] || [ $MODEL == "google/mt5-xxl" ]; then
       --dist cosine $LC \
       --specific_layer $LAYER
   done
-      
-elif [ $MODEL == "rembert" ]; then
+elif [ $MODEL == "google/rembert" ]; then
   for SL in ar he vi id jv tl eu ml ta te af nl en de el bn hi mr ur fa fr it pt es bg ru ka ko th sw zh kk tr et fi hu az lt pl uk ro; do
     python $REPO/third_party/evaluate_retrieval_rembert.py \
       --model_type $MODEL_TYPE \

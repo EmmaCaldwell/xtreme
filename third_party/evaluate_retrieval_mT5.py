@@ -53,10 +53,7 @@ def load_embeddings(embed_file, num_sentences=None):
 
 def prepare_batch(sentences, tokenizer, model_type, device="cuda", max_length=512, lang='en', langid=None, use_local_max_length=True, pool_skip_special_token=False):
   pad_token = tokenizer.pad_token
-  cls_token = tokenizer.cls_token
-  sep_token = tokenizer.sep_token
-  print("\n sep token: \n")
-  print(sep_token)
+  sep_token = tokenizer.eos_token
 
   pad_token_id = tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0]
   pad_token_segment_id = 0
@@ -76,7 +73,7 @@ def prepare_batch(sentences, tokenizer, model_type, device="cuda", max_length=51
     if len(sent) > max_length - 2:
       sent = sent[: (max_length - 2)]
     input_ids = tokenizer.convert_tokens_to_ids(sent)
-    input_ids = tokenizer.convert_tokens_to_ids([cls_token] + sent + [sep_token])
+    input_ids = tokenizer.convert_tokens_to_ids(sent + [sep_token])
     padding_length = max_length - len(input_ids)
     attention_mask = [1] * len(input_ids) + [0] * padding_length
     pool_mask = [0] + [1] * (len(input_ids) - 2) + [0] * (padding_length + 1)
@@ -711,11 +708,11 @@ def main():
     print("\n PATH \n")
     print(os.path.realpath(src_tok_file))
     tgt_tok_file = os.path.join(args.output_dir,'{}-en.en'.format(src_lang2))
-    
+
 
     all_src_embeds = extract_embeddings(args, src_text_file, src_tok_file, None, lang=src_lang2)
     all_tgt_embeds = extract_embeddings(args, tgt_text_file, tgt_tok_file, None, lang=tgt_lang2)
-    
+
 
     idx = list(range(1, len(all_src_embeds) + 1, 4))
     best_score = 0
