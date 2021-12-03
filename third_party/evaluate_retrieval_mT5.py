@@ -31,34 +31,16 @@ from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.data import RandomSampler, SequentialSampler
 from tqdm import tqdm, trange
 
-#from transformers import (
- #   BertConfig, BertModel, BertTokenizer, XLMConfig, XLMModel,
-  #  XLMRobertaTokenizer, XLMTokenizer)
-
 from transformers import MT5Model, T5Tokenizer, MT5Config
 
-#from bert import BertForRetrieval
 from processors.utils import InputFeatures
 from utils_retrieve import mine_bitext, bucc_eval, similarity_search
 import utils_lareqa
-#from xlm_roberta import XLMRobertaConfig, XLMRobertaForRetrieval, XLMRobertaModel
 
 os.system('set -e')
 logger = logging.getLogger(__name__)
 
-#ALL_MODELS = sum(
-    #(tuple(conf.pretrained_config_archive_map.keys())
-     #for conf in (BertConfig, XLMConfig, XLMRobertaConfig)),
-    #()
-#)
-
 MODEL_CLASSES = {
-    #"bert": (BertConfig, BertModel, BertTokenizer),
-    #"xlm": (XLMConfig, XLMModel, XLMTokenizer),
-    #"xlmr": (XLMRobertaConfig, XLMRobertaModel, XLMRobertaTokenizer),
-    #"bert-retrieval": (BertConfig, BertForRetrieval, BertTokenizer),
-    #"xlmr-retrieval":
-     #   (XLMRobertaConfig, XLMRobertaForRetrieval, XLMRobertaTokenizer),
     "mt5": (MT5Config, MT5Model, T5Tokenizer), 
 }
 
@@ -94,12 +76,7 @@ def prepare_batch(sentences, tokenizer, model_type, device="cuda", max_length=51
     if len(sent) > max_length - 2:
       sent = sent[: (max_length - 2)]
     input_ids = tokenizer.convert_tokens_to_ids(sent)
-    #input_ids = tokenizer.convert_tokens_to_ids([cls_token] + sent + [sep_token])
-    
-    print("\n INPUT IDS: \n")
-    print(input_ids)
-
-
+    input_ids = tokenizer.convert_tokens_to_ids([cls_token] + sent + [sep_token])
     padding_length = max_length - len(input_ids)
     attention_mask = [1] * len(input_ids) + [0] * padding_length
     pool_mask = [0] + [1] * (len(input_ids) - 2) + [0] * (padding_length + 1)
@@ -117,37 +94,21 @@ def prepare_batch(sentences, tokenizer, model_type, device="cuda", max_length=51
   else:
     pool_mask = attention_mask
 
-
-  #if model_type == "xlm":
-   # langs = torch.LongTensor([[langid] * max_length for _ in range(len(sentences))]).to(device)
-    #return {"input_ids": input_ids, "attention_mask": attention_mask, "langs": langs}, pool_mask
-#  elif model_type == 'bert' or model_type == 'xlmr':
- #   token_type_ids = torch.LongTensor([[0] * max_length for _ in range(len(sentences))]).to(device)
-  #  return {"input_ids": input_ids, "attention_mask": attention_mask, "token_type_ids": token_type_ids}, pool_mask
-  #elif model_type in ('bert-retrieval', 'xlmr-retrieval'):
-   # token_type_ids = torch.LongTensor([[0] * max_length for _ in range(len(sentences))]).to(device)
-    #return {"q_input_ids": input_ids, "q_attention_mask": attention_mask, "q_token_type_ids": token_type_ids}, pool_mask
   if model_type == "mt5":
     langs = torch.LongTensor([[langid] * max_length for _ in range(len(sentences))]).to(device)
-    return {"input_ids": input_ids, "attention_mask": attention_mask, "langs": langs}, pool_mask
+    return {"input_ids": input_ids, "attention_mask": attention_mask, "decoder_input_ids": input_ids}, pool_mask
 
 
 def tokenize_text(text_file, tok_file, tokenizer, lang=None):
   if os.path.exists(tok_file):
-    print("\n !!! tok file exists !!! \n")
     tok_sentences = [l.strip().split(' ') for l in open(tok_file)]
     logger.info(' -- loading from existing tok_file {}'.format(tok_file))
-    print(tok_sentences)
     return tok_sentences
 
   tok_sentences = []
   sents = [l.strip() for l in open(text_file)]
   with open(tok_file, 'w') as writer:
     for sent in tqdm(sents, desc='tokenize'):
-      #if isinstance(tokenizer, XLMTokenizer):
-       # tok_sent = tokenizer.tokenize(sent, lang=lang)
-      #else:
-       # tok_sent = tokenizer.tokenize(sent)
       tok_sent = tokenizer.tokenize(sent)
       tok_sentences.append(tok_sent)
       writer.write(' '.join(tok_sent) + '\n')
@@ -214,13 +175,9 @@ def extract_embeddings(args, text_file, tok_file, embed_file, lang='en', pool_ty
     with torch.no_grad():
       outputs = model(**batch)
 
-      #if args.model_type == 'bert' or args.model_type == 'xlmr':
-       # last_layer_outputs, first_token_outputs, all_layer_outputs = outputs
-      #elif args.model_type == 'xlm':
-       # last_layer_outputs, all_layer_outputs = outputs
-        #first_token_outputs = last_layer_outputs[:,0]  # first element of the last layer
       if args.model_type == 'mt5':
-        last_layer_outputs, first_token_outputs, all_layer_outputs = outputs
+        all_layer_outputs = outputs.encoder_hidden_states
+        #last_layer_outputs, first_token_outputs, all_layer_outputs = outputs
 
       # get the pool embedding
       if pool_type == 'cls':
@@ -232,7 +189,8 @@ def extract_embeddings(args, text_file, tok_file, embed_file, lang='en', pool_ty
 
     for embeds, batch_embeds in zip(all_embeds, all_batch_embeds):
       embeds[start_index: end_index] = batch_embeds.cpu().numpy().astype(np.float32)
-    del last_layer_outputs, first_token_outputs, all_layer_outputs
+    del all_layer_outputs
+    del outputs
     torch.cuda.empty_cache()
 
   if embed_file is not None:
@@ -277,7 +235,6 @@ def extract_encodings(args, text_file, tok_file, embed_file, lang='en',
                                      langid=langid,
                                      pool_skip_special_token=args.pool_skip_special_token)
     with torch.no_grad():
-      #if args.model_type in ('bert-retrieval', 'xlmr-retrieval'):
       if args.model_type in ('mt5-retrieval'):
         batch['inference'] = True
         outputs = model(**batch)
@@ -508,7 +465,6 @@ def main():
   )
 
   if args.task_name == 'bucc2018':
-    print("inside bucc18\n")
     best_threshold = None
     SL, TL = args.src_language, args.tgt_language
     for split in ['dev', 'test']:
@@ -518,7 +474,6 @@ def main():
           extract_embeddings(args, f'{prefix}.{lang}.txt', f'{prefix}.{lang}.tok', f'{prefix}.{lang}.emb', lang=lang)
 
       if args.mine_bitext:
-        print("mine bitext\n")
         num_layers = args.num_layers
         if args.specific_layer != -1:
           indices = [args.specific_layer]
